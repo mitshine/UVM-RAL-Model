@@ -1,0 +1,1633 @@
+
+Register Abstraction Layer (RAL) Model
+
+Most digital controllers or blocks have registers that can be programmed by software (commonly known as firmware). These registers are accessed by certain protocols like AXI, AHB, APB protocols, etc. Using these register software can control design behavior in a certain way. For example, design can have certain configurations which can be enabled or disabled by programming registers. Registers are commonly known as SFR (Special Function Registers).
+
+The verification engineer is also responsible to check register accessibility and its functionality by verifying all registers with possible value, Though the UVM RAL model is not necessary for registers verification, RAL is a recommended technique that does the job efficiently.
+
+32-bit registers are generally used in the designs.
+Registers in design	
+
+As mentioned above, software needs to do some transactions based on a supported protocol to write/ read values to/ from registers. So, for this, we need a driver, sequencer to drive sequence_item. RAL model provides a set of methods and rules that make verification engineer job easy,
+
+The register abstraction layer provides standard base class libraries. It is used to create a memory-mapped model for registers in DUT using an object-oriented model.
+
+The UVM RAL provides a set of classes that model DUT registers and memories. It generates stimulus to the DUT and covers some aspects of functional coverage.
+
+ “The RAL model is an abstract model for registers and memories in DUT.”
+Register Model Testbench Environment
+RAL model environment	
+
+RAL provides front door access and backdoor access to the SFR.
+Front door Access
+
+A register is said to be accessed as a front door if it involves a bus interface. It does consume time in accessing the register.
+Back door Access
+
+A register is said to be accessed as a back door if it uses a simulator database to directly access the DUT register using design signals.
+Advantages of the UVM RAL model
+
+    Reusability – Same RAL model can be used in other environments for the same design. For example, block-level and system-level environments.
+    Once a RAL model is integrated into the verification environment, a verification engineer can access registers by using read/write methods. Internally, actual transactions will be carried by the model.
+    It defines the same set of rules so it is convenient to follow across the industry.
+    Reset value can be configured as per the design requirement.
+    As it uses the OOP concept, a register can be accessed with a name and methods can be called directly. 
+    It provides a connection to sample coverage bins.
+    It has a built-in compare method that compares predicted value and actual register value.
+    Internal sequencer manages to drive design signals even though parallelly multiple read/write requests have been given.
+
+
+
+
+
+RAL Model Structure
+
+The register model or RAL blocks consists of register files, registers, memories, maps, and other blocks. Let’s understand each of them in detail and how the UVM RAL model provides classes.
+RAL blocks	
+
+The UVM library provides the base classes for each of them as mentioned below.
+
+RAL blocks
+	
+
+Corresponding RAL base classes
+
+memory
+	
+
+uvm_mem
+
+Address map
+	
+
+uvm_reg_map
+
+Register blocks
+	
+
+uvm_reg_block
+
+Register files
+	
+
+uvm_reg_file
+
+registers
+	
+
+uvm_reg
+
+Register fields
+	
+
+uvm_reg_field
+RAL model structure	
+UVM RAL classes hierarchy
+
+RAL Tutorials
+
+    RAL Model
+    RAL Model Structure
+    RAL Classes
+    RAL methods
+    RAL Adapter
+    RAL Predictor
+    Global declaration and built-in defines
+    RAL model Example
+
+
+
+
+RAL Classes
+uvm_reg_block
+
+The user-defined register block is derived from uvm_reg_block. It consists of all registers, maps, register files, and other register blocks if any. A block can have one or more address maps, each corresponding to a physical interface on the block. The register block at the highest hierarchical level provides the “Register Model” as an instance.
+uvm_reg_block methods
+
+Methods
+	
+
+Description
+
+new
+	
+
+Creates a new instance.
+
+configure
+	
+
+Configuration for a specific instance.
+
+create_map
+	
+
+Create an address map in the block
+
+set_default_map
+	
+
+Defines the default address map
+
+lock_model
+	
+
+Lock the model and build the address map
+
+get_block
+	
+
+Get the sub-blocks
+
+get_map
+	
+
+Get the address maps
+
+get_registers
+	
+
+Get the registers
+
+get_fields
+	
+
+Get the fields
+
+get_memories
+	
+
+Get the memories
+
+reset
+	
+
+Reset the mirror for the block
+
+update
+	
+
+Update the mirrored values
+
+set_backdoor
+	
+
+Set the user-defined backdoor for all registers in the block
+
+get_backdoor
+	
+
+Get the user-defined backdoor for all registers in the block
+
+add_hdl_path
+	
+
+Add the HDL path
+
+Note: Please refer to the UVM class reference manual to see all methods associated with the uvm_reg_block class
+
+Example:
+
+class RegModel_SFR extends uvm_reg_block;
+  // declaration for registers/ blocks/ register files/ memories/ address map
+  `uvm_object_utils(RegModel_SFR)
+  
+  function new(string name = "RegModel_SFR");
+    super.new(name, ./*other arguments*/);
+  endfunction
+  
+  virtual function void build();
+    // create registers/ blocks/ register files/ memories/ address map
+  endfunction
+endclass
+
+uvm_reg
+
+The user-defined register class is derived from uvm_reg. It mimics the register of the design. To represent fields present in the register, RAL provides the uvm_reg_field class.
+uvm_reg methods
+
+Methods
+	
+
+Description
+
+new
+	
+
+Creates a new instance.
+
+configure
+	
+
+Configuration for a specific instance.
+
+set_offset
+	
+
+Modifies the register offset
+
+get_offset
+	
+
+Returns the register offset
+
+get_address
+	
+
+Returns the base external physical address of the register
+
+get_fields
+	
+
+Returns the register fields
+
+set
+	
+
+Sets the desired value of the register
+
+get
+	
+
+Gets the desired value of the register
+
+reset
+	
+
+Reset the desired/mirrored value of the register
+
+update
+	
+
+Update the desired value to the register present in the DUT.
+
+read
+	
+
+Read the current value from the register
+
+write
+	
+
+Write the specified value in the register
+
+mirror
+	
+
+Update the mirrored value for the register.
+
+set_backdoor
+	
+
+Set the user-defined backdoor for all registers in the block
+
+get_backdoor
+	
+
+Get the user-defined backdoor for all registers in the block
+
+add_hdl_path
+	
+
+Add the HDL path
+
+Note: Please refer to the UVM class reference manual to see all methods associated with the uvm_reg class
+
+Example:
+
+class my_reg extends uvm_reg;
+  // declaration for register fields
+  
+  `uvm_object_utils(my_reg)
+  function new(string name = "my_reg");
+    super.new(name, ./*other arguments*/);
+  endfunction
+  
+  virtual function void build();
+    // create and configure register fields
+  endfunction
+endclass
+
+uvm_reg_field
+
+It represents fields of the register. Each register can have one or more register fields that can have different access policies out of which RW, RO, W1C, W1S, etc are commonly used.
+uvm_reg_field access policies
+
+Access policies
+	
+
+Description
+
+RO
+	
+
+Read Only. It can simply read the register field value. Writing a field value has no effect
+
+RW
+	
+
+Read Write: Field value can be written/modified and read the field value.
+
+W1C
+	
+
+Write 1 to clear:
+1. Writing 1 clears the corresponding bit.
+
+2. Writing 0 has no effect. 
+
+3. Reads field value
+
+W1S
+	
+
+Write 1 to set:
+1. Writing 1 set the corresponding bit.
+
+2. Writing 0 has no effect. 
+
+3. Reads field value
+uvm_reg_field methods
+
+Methods
+	
+
+Description
+
+new
+	
+
+Creates a new instance.
+
+configure
+	
+
+Configuration for a specific instance.
+
+set_access
+	
+
+Set the access policy of the field.
+
+get_access
+	
+
+Get the access policy of the field.
+
+set
+	
+
+Sets the desired value of the field
+
+get
+	
+
+Gets the desired value of the field
+
+reset
+	
+
+Reset the desired/mirrored value of the field
+
+read
+	
+
+Read the current value from the field
+
+write
+	
+
+Write the specified value in the field
+
+mirror
+	
+
+Update the mirrored value for the field
+
+Note: Please refer to the UVM class reference manual to see all methods associated with the uvm_reg_field class
+uvm_reg_file
+
+The register file is derived from uvm_reg_file. The register file is nothing but a set of registers or register files.
+uvm_reg_file methods
+
+Methods
+	
+
+Description
+
+new
+	
+
+Creates a new instance.
+
+configure
+	
+
+Configuration for a specific instance.
+
+get_regfile
+	
+
+Get the parent register file
+
+add_hdl_path
+	
+
+Add the HDL path
+
+Note: Please refer to the UVM class reference manual to see all methods associated with the uvm_reg_file class
+uvm_mem
+
+UVM RAL also supports memory implementation. As uvm_reg mimics registers of DUT. Similarly, uvm_mem mimics the memory of DUT.
+uvm_mem methods
+
+Methods
+	
+
+Description
+
+new
+	
+
+Creates a new instance.
+
+configure
+	
+
+Configuration for a specific instance.
+
+set_offset
+	
+
+Modifies the memory offset
+
+get_offset
+	
+
+Returns the memory offset
+
+get_address
+	
+
+Returns the base address of the memory location
+
+read
+	
+
+Read the current value from the memory location
+
+write
+	
+
+Write the specified value in the memory location
+
+set_backdoor
+	
+
+Set the user-defined backdoor for the memory
+
+get_backdoor
+	
+
+Get the user-defined backdoor for the memory
+
+add_hdl_path
+	
+
+Add the HDL path
+
+Note: Please refer to the UVM class reference manual to see all methods associated with the uvm_mem class
+uvm_reg_map
+
+The user-defined uvm_reg_map is a base class used to access the model via a specific interface/bus. 
+uvm_reg_map methods
+
+Methods
+	
+
+Description
+
+new
+	
+
+Creates a new instance.
+
+configure
+	
+
+Configuration for a specific instance.
+
+add_reg
+	
+
+Add a register
+
+add_mem
+	
+
+Add a memory
+
+add_submap
+	
+
+Add an address map
+
+reset
+	
+
+Reset the mirror for all registers in this address map
+
+set_sequencer
+	
+
+Set the sequencer and associated adapter for the map
+
+get_sequencer
+	
+
+Get the sequencer and associated adapter for the map
+
+get_registers
+	
+
+Get the registers
+
+get_reg_by_offset
+	
+
+Get register mapped at offset
+
+get_mem_by_offset
+	
+
+Get memory mapped at offset
+
+Note: Please refer to the UVM class reference manual to see all methods associated with the uvm_reg_map class
+Set the sequencer and associated adapter for a single map
+
+Example:
+
+reg_model.axi_map.set_sequencer(.sequencer(agt.sequencer), .adapter(adapter) );
+
+Where,
+
+reg_model – register block
+
+axi_map – address map
+
+adapter – register adapter for converting register transactions to bus transaction (It will be discussed in RAL adapter section)
+For multiple maps associated with different interfaces
+Testbench with AXI and AHB protocols	
+
+Example:
+
+In the case of AXI and AHB interfaces, if the same RAL model has to be accessed, then a separate adapter class needs to be created. So, each register maps RAL model sequencer need to be set.
+
+reg_model.axi_map.set_sequencer( .sequencer(axi_agt.sequencer), .adapter(axi_adapter) );
+reg_model.ahb_map.set_sequencer( .sequencer(ahb_agt.sequencer), .adapter(ahb_adapter) );
+
+Accessing a register of the different maps
+
+reg_model.module_reg.control_sfr.write(.status(status), .value(wdata), .map(reg_model.axi_map)); 
+reg_model.module_reg.control_sfr.write(.status(status), .value(wdata), .map(reg_model.ahb_map));
+
+RAL Tutorials
+
+    RAL Model
+    RAL Model Structure
+    RAL Classes
+    RAL methods
+    RAL Adapter
+    RAL Predictor
+    Global declaration and built-in defines
+
+
+
+
+
+RAL methods in model
+
+It is important to understand how methods like read, write, set, get, update, mirror, etc behave for mirrored/ desired value.
+Desired value
+
+The desired value is the value that has to be programmed to the DUT by the testbench.
+Mirrored value
+
+The mirrored value is the value that captures the DUT register value i.e. current DUT register state. It can get modified in run time based on bus transactions.
+RAL Methods
+RAL methods	
+
+    write() method writes the value of the DUT register. It also updates desired and mirrored value
+    read() method reads the value of the DUT register and updates desired and mirrored value.
+    mirror() method behaves the same as the read() method, additionally it compares the value with mirrored value if check argument = UVM_CHECK. An error is reported if the mirrored value differs from the read value of the DUT.
+    get_mirrored_value() gets the mirrored value of the register fields and does not read the actual register in the DUT.
+    set() method updates desired value and does not write the register of the DUT. To update the desired value to the DUT register, the update() method can be used. 
+    get() method reads the desired value and does not read the actual register in the DUT.
+    update() method updates desired value to the register in the DUT if there is a difference between desired and mirrored value.
+    predict() method updates mirrored and desired value.
+    reset() method resets mirrored and desired value.
+
+
+
+
+RAL Adapter
+
+The UVM register model (RAL) methods like the write() and read() deal with register transactions (i.e. register sequence item) and DUT accepts or sends signal level transactions (bus sequence item) from/to the testbench by an interface. Hence, there is a requirement to convert the register transactions to bus transactions and vice-versa. This is fulfilled by the “Register Adapter”. The user-defined adapter class is derived from the uvm_reg_adpater base class.
+RAL Adapter	
+
+Every front door access operation (read() or write() method calls) passes through reg2bus and bus2reg API. A user must implement these two methods.
+
+reg2bus: It converts register transactions to bus transactions
+
+pure virtual function uvm_sequence_item reg2bus(const ref uvm_reg_bus_op rw)
+
+bus2reg: It converts bus transactions to register transactions
+
+pure virtual function void bus2reg(uvm_sequence_item bus_item, ref uvm_reg_bus_op rw)
+
+User-defined reg_axi_adapter implementation
+
+class reg_axi_adapter extends uvm_reg_adapter;
+  `uvm_object_utils(reg_axi_adapter)
+  
+  function new(string name = "reg_axi_adapter");
+    super.new(name);
+  endfunction
+  
+  virtual function uvm_sequence_item reg2bus (const ref uvm_reg_bus_op rw);
+    ...
+    ...
+  endfunction
+  
+  virtual function void bus2reg (uvm_sequence_item bus_item, ref uvm_reg_bus_op rw);
+    ...
+    ...
+   endfunction
+endclass
+
+Plug in register adapter in testbench environment
+
+class env extends uvm_env;
+  `uvm_component_utils(env)
+  agent agt;
+  reg_axi_adapter adapter;
+  RegModel_SFR reg_model; // Top level register block
+
+  function new(string name = "env", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
+  
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    agt = agent::type_id::create("agt", this);
+    adapter = reg_axi_adapter::type_id::create("adapter");
+    reg_model = RegModel_SFR::type_id::create("reg_model");
+    reg_model.build();
+    reg_model.reset();
+    reg_model.lock_model();
+    reg_model.print();
+    
+    uvm_config_db#(RegModel_SFR)::set(uvm_root::get(), "*", "reg_model", reg_model);
+  endfunction
+  
+  function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    reg_model.default_map.set_sequencer( .sequencer(agt.seqr), .adapter(adapter) );
+    reg_model.default_map.set_base_addr('h0);
+  endfunction
+endclass
+
+
+
+
+RAL Predictor
+
+The UVM RAL predictor is a component that updates mirror values based on transactions on a physical interface for which UVM provides the ‘uvm_reg_predictor’ base class. The DUT registers can be updated either by RAL methods (like a read and write) or by running individual sequences with valid addresses and data on the target agent so that the driver communicates with DUT directly.
+
+In front door access, UVM RAL provides three models for the predictor as
+
+    Implicit (Auto) Prediction
+    Explicit Prediction
+    Passive Prediction
+
+Auto Prediction
+
+In auto prediction, front door access methods automatically call a predict() method for any transaction happening over a bus i.e. reading data from a register or writing data to the register at the end of the clock cycle.
+Auto Prediction in RAL	
+
+To enable auto prediction: Call set_auto_predict() method. The RAL model fails to update if method returns UVM_NOT_OK status
+
+Advantage – Simple implementation
+
+Disadvantage – It can not update the register model if register sequences are written to access DUT registers.
+Explicit Prediction
+
+It is the default mode of prediction that involves an explicit external predictor component that snoop for bus transactions and calls the predict() method to update its mirrored register value. Since it directly interacts with bus transactions, it requires a register adapter to convert bus transactions into a register transaction.
+Explicit Prediction in RAL	
+
+To enable explicit prediction: It is enabled by default.
+
+//Create a predictor
+uvm_reg_predictor #(axi_seq_item) axi_predictor;
+axi_predictor = uvm_reg_predictor #(axi_seq_item) :: type_id:: create("axi_predictor", this);
+
+//Configure
+axi_predictor.map = reg_model.default_map; //Assigning map handle
+axi_predictor.adapter = axi_reg_adapter; //Assigning adapter handle
+
+//Connect
+axi_mon.ap_mon.connect(axi_predictor.bus_imp); // Monitor analysis port and predictor analysis import connection
+
+Advantage: This mode keeps the register model updated for transaction over the target bus interface 
+
+Disadvantage: Extra predictor component has to instantiate, configure and connect.
+Plugin reg_predictor in testbench environment
+
+class env extends uvm_env;
+  `uvm_component_utils(env)
+  agent agt;
+  reg_axi_adapter adapter;
+  uvm_reg_predictor #(axi_seq_item) axi_predictor;
+  RegModel_SFR reg_model; // Top level register block
+
+  function new(string name = "env", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
+  
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    agt = agent::type_id::create("agt", this);
+    adapter = reg_axi_adapter::type_id::create("adapter");
+    axi_predictor = uvm_reg_predictor #(axi_seq_item) :: type_id:: create("axi_predictor", this);
+    reg_model = RegModel_SFR::type_id::create("reg_model");
+    ...
+  endfunction
+  
+  function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    reg_model.default_map.set_sequencer( .sequencer(agt.seqr), .adapter(adapter) );
+    reg_model.default_map.set_base_addr('h0);
+    axi_predictor.map = reg_model.default_map; //Assigning map handle
+    axi_predictor.adapter = axi_reg_adapter; //Assigning adapter handle
+    axi_mon.ap_mon.connect(axi_predictor.bus_imp); // Monitor analysis port and predictor analysis import connection
+  endfunction
+endclass
+
+Passive Prediction
+
+The passive prediction is similar to an explicit prediction that uses a predictor component except the front door register access methods can not be used.
+Passive Prediction in RAL	
+
+Advantage: This mode keeps the register model updated for transaction over the target bus interface 
+
+Disadvantage: front door register access methods can not be used. Only backdoor access is possible. Hence, it is rarely used.
+
+
+
+
+
+
+UVM RAL model global declaration and built-in defines
+
+The UVM RAL model defines certain types, enum, and defines globally.
+RAL Model Defines
+
+Defines
+	
+
+Description
+
+`UVM_REG_ADDR_WIDTH
+	
+
+Maximum address width (in bits)
+
+Default value = 64
+
+Used to define the uvm_reg_addr_t type
+
+`UVM_REG_DATA_WIDTH
+	
+
+Maximum data width (in bits)
+
+Default value = 64
+
+Used to define the uvm_reg_data_t type
+
+`UVM_REG_BYTENABLE_WIDTH
+	
+
+The maximum number of byte enable bits
+
+Default value = one per byte in `UVM_REG_DATA_WIDTH
+
+Used to define the uvm_reg_byte_en_t type
+
+`UVM_REG_CVR_WIDTH
+	
+
+The maximum number of bits in a uvm_reg_cvr_t coverage model set.
+
+Default value = 32
+RAL Model Types
+
+Types
+	
+
+Description
+
+uvm_reg_addr_t
+	
+
+2-state address value with `UVM_REG_ADDR_WIDTH bits
+
+uvm_reg_addr_logic_t
+	
+
+4-state address value with `UVM_REG_ADDR_WIDTH bits
+
+uvm_reg_data_t
+	
+
+2-state data value with `UVM_REG_DATA_WIDTH bits uvm_reg_data_logic_t
+
+uvm_reg_data_logic_t
+	
+
+4-state data value with `UVM_REG_DATA_WIDTH bits
+
+uvm_reg_byte_en_t
+	
+
+2-state byte_enable value with `UVM_REG_BYTENABLE_WIDTH bits
+
+uvm_reg_cvr_t
+	
+
+Coverage model value set with `UVM_REG_CVR_WIDTH bits.
+
+uvm_hdl_path_slice
+	
+
+Slice of an HDL path
+RAL Model Enumerations
+
+Enumerations
+	
+
+Description
+
+uvm_status_e
+	
+
+Return status for register operations
+
+UVM_IS_OK
+	
+
+The operation completed successfully
+
+UVM_NOT_OK
+	
+
+The operation completed with an error
+
+UVM_HAS_X
+	
+
+The operation completed successfully bit had unknown bits.
+
+.
+
+uvm_path_e
+	
+
+Path used for register operation
+
+UVM_FRONTDOOR
+	
+
+Use the front door
+
+UVM_BACKDOOR
+	
+
+Use the back door
+
+UVM_PREDICT
+	
+
+The operation is derived from observations by a bus monitor via the uvm_reg_predictor class.
+
+UVM_DEFAULT_PATH
+	
+
+The operation specified by the context
+
+uvm_check_e
+	
+
+Read-only or read-and-check
+
+UVM_NO_CHECK
+	
+
+Read-only
+
+UVM_CHECK
+	
+
+Read and check
+
+uvm_access_e
+	
+
+Type of operation begin performed
+
+UVM_READ
+	
+
+Read operation
+
+UVM_WRITE
+	
+
+Write operation
+
+uvm_predict_e
+	
+
+How the mirror is to be updated
+
+UVM_PREDICT_DIRECT
+	
+
+The predicted value is as-is
+
+UVM_PREDICT_READ
+	
+
+Predict based on the specified value having been read
+
+UVM_PREDICT_WRITE
+	
+
+Predict based on the specified value having been written
+
+Note: Please refer to the UVM class reference manual to see all enumerations in the UVM RAL model.
+
+
+
+
+
+
+
+RAL Model Example
+
+Let’s understand how the register model is constructed, integrate it with the verification environment, and access the DUT register using read and write methods.
+Contents hide
+1 RAL Model Example
+1.1 Register description
+1.2 Testbench block diagram
+1.3 Testbench hierarchy
+1.4 Overall steps
+1.4.1 Step 1: Steps to create a register (RAL) model
+1.4.1.1 Step A: Write register classes
+1.4.1.2 Step B: Write a register block
+1.4.1.3 Step C: Write a top-level register block
+1.4.2 Step 2: Write an adapter class
+1.4.3 Step 3: Integrate register model and adapter with the testbench
+1.4.3.1 Register Model hierarchy
+1.4.4 Step 4: Access registers using RAL methods
+1.4.5 Execute Complete code
+
+The design has four registers as control, interrupt status, mask status, debug, etc.
+Registers in DUT	
+Register description
+
+Register Name
+	
+
+Address
+	
+
+Range
+	
+
+Access
+	
+
+Reset
+	
+
+Field Name
+
+Control
+	
+
+‘h0
+	
+
+[31:0]
+		
+
+32‘h5
+	
+		
+
+[31:3]
+	
+
+RO
+	
+
+29’h0
+	
+
+Reserved
+		
+
+2
+	
+
+RW
+	
+
+1’h1
+	
+
+parity_en
+		
+
+1
+	
+
+RW
+	
+
+1’h0
+	
+
+dbg_en
+		
+
+0
+	
+
+RW
+	
+
+1’h1
+	
+
+mod_en
+
+Register Name
+	
+
+Address
+	
+
+Range
+	
+
+Access
+	
+
+Reset
+	
+
+Field Name
+
+Interrupt Status
+	
+
+‘h4
+	
+
+[31:0]
+		
+
+32‘h0
+	
+		
+
+[31:2]
+	
+
+RO
+	
+
+30’h0
+	
+
+Reserved
+		
+
+1
+	
+
+W1C
+	
+
+1’h0
+	
+
+r_axi_err
+		
+
+0
+	
+
+W1C
+	
+
+1’h0
+	
+
+w_axi_err
+
+Register Name
+	
+
+Address
+	
+
+Range
+	
+
+Access
+	
+
+Reset
+	
+
+Field Name
+
+Interrupt Mask
+	
+
+‘h8
+	
+
+[31:0]
+		
+
+32‘h0
+	
+		
+
+[31:2]
+	
+
+RO
+	
+
+30’h0
+	
+
+Reserved
+		
+
+1
+	
+
+RW
+	
+
+1’h0
+	
+
+r_axi_err_msk
+		
+
+0
+	
+
+RW
+	
+
+1’h0
+	
+
+w_axi_err_msk
+
+Register Name
+	
+
+Address
+	
+
+Range
+	
+
+Access
+	
+
+Reset
+	
+
+Field Name
+
+Debug
+	
+
+‘hc
+	
+
+[31:0]
+		
+
+32‘h0
+	
+		
+
+[31:2]
+	
+
+RO
+	
+
+30’h0
+	
+
+Reserved
+		
+
+1
+	
+
+RO
+	
+
+1’h0
+	
+
+r_axi_resp
+		
+
+0
+	
+
+RO
+	
+
+1’h0
+	
+
+w_axi_resp
+Testbench block diagram
+Testbench with register model	
+Testbench hierarchy
+
+--------------------------------------------------------------
+Name                       Type                    Size  Value
+--------------------------------------------------------------
+uvm_test_top               reg_test                -     @1878
+ env_o                    env                     -     @1944
+   agt                    agent                   -     @1976
+     drv                  driver                  -     @2301
+       rsp_port           uvm_analysis_port       -     @2332
+       seq_item_port      uvm_seq_item_pull_port  -     @2238
+     mon                  monitor                 -     @3013
+       item_collect_port  uvm_analysis_port       -     @3063
+     seqr                 seqcr                   -     @2365
+       rsp_export         uvm_analysis_export     -     @2422
+       seq_item_export    uvm_seq_item_pull_imp   -     @2982
+       ...
+--------------------------------------------------------------
+
+Now, let’s see how the register model, adapter is created and integrated with the testbench environment.
+Overall steps
+
+    Create a register (RAL) model
+    Write an adapter/Predictor class
+    Integrate register model and adapter with the testbench
+    Access registers using RAL methods.
+
+Step 1: Steps to create a register (RAL) model
+Step A: Write register classes
+
+Write register classes (derived from uvm_reg) for all registers in DUT
+
+Control register:
+
+class ral_control_reg extends uvm_reg;
+  rand uvm_reg_field rsvd;
+  rand uvm_reg_field parity_en;
+  rand uvm_reg_field dbg_en;
+  rand uvm_reg_field mod_en;
+  
+  `uvm_object_utils(ral_control_reg)
+  function new(string name = "ral_control_reg");
+    super.new(name, 32, build_coverage(UVM_NO_COVERAGE));
+  endfunction
+  
+  virtual function void build();
+    rsvd = uvm_reg_field::type_id::create("rsvd");
+    parity_en = uvm_reg_field::type_id::create("parity_en");
+    dbg_en = uvm_reg_field::type_id::create("dbg_en");
+    mod_en = uvm_reg_field::type_id::create("mod_en");
+    
+    rsvd.configure     (this, 29, 3, "RO", 0, 1'b0, 1, 1, 0);
+    parity_en.configure(this,  1, 2, "RW", 0, 1'b1, 1, 1, 0);
+    dbg_en.configure   (this,  1, 1, "RW", 0, 1'b0, 1, 1, 0);
+    mod_en.configure   (this,  1, 0, "RW", 0, 1'b1, 1, 1, 0);
+  endfunction
+endclass
+
+Interrupt status register:
+
+class ral_intr_sts_reg extends uvm_reg;
+  rand uvm_reg_field rsvd;
+  rand uvm_reg_field r_axi_err;
+  rand uvm_reg_field w_axi_err;
+  
+  `uvm_object_utils(ral_intr_sts_reg)
+  function new(string name = "ral_intr_sts_reg");
+    super.new(name, 32, build_coverage(UVM_NO_COVERAGE));
+  endfunction
+  
+  virtual function void build();
+    rsvd = uvm_reg_field::type_id::create("rsvd");
+    r_axi_err = uvm_reg_field::type_id::create("r_axi_err");
+    w_axi_err = uvm_reg_field::type_id::create("w_axi_err");
+    
+    rsvd.configure        (this, 30, 2, "RO", 0, 1'b0, 1, 1, 0);
+    r_axi_err.configure   (this,  1, 1, "W1C", 0, 1'b0, 1, 1, 0);
+    w_axi_err.configure   (this,  1, 0, "W1C", 0, 1'b0, 1, 1, 0);
+  endfunction
+endclass
+
+Interrupt mask register:
+
+class ral_intr_msk_reg extends uvm_reg;
+  rand uvm_reg_field rsvd;
+  rand uvm_reg_field r_axi_err_msk;
+  rand uvm_reg_field w_axi_err_msk;
+  
+  `uvm_object_utils(ral_intr_msk_reg)
+  function new(string name = "ral_intr_msk_reg");
+    super.new(name, 32, build_coverage(UVM_NO_COVERAGE));
+  endfunction
+  
+  virtual function void build();
+    rsvd = uvm_reg_field::type_id::create("rsvd");
+    r_axi_err_msk = uvm_reg_field::type_id::create("r_axi_err_msk");
+    w_axi_err_msk = uvm_reg_field::type_id::create("w_axi_err_msk");
+    
+    rsvd.configure          (this, 30, 2, "RO", 0, 1'b0, 1, 1, 0);
+    r_axi_err_msk.configure (this,  1, 1, "RW", 0, 1'b0, 1, 1, 0);
+    w_axi_err_msk.configure (this,  1, 0, "RW", 0, 1'b1, 1, 1, 0);
+  endfunction
+endclass
+
+Debug register:
+
+class ral_debug_reg extends uvm_reg;
+  rand uvm_reg_field rsvd;
+  rand uvm_reg_field r_axi_resp;
+  rand uvm_reg_field w_axi_resp;
+  
+  `uvm_object_utils(ral_debug_reg)
+  function new(string name = "ral_debug_reg");
+    super.new(name, 32, build_coverage(UVM_NO_COVERAGE));
+  endfunction
+  
+  virtual function void build();
+    rsvd = uvm_reg_field::type_id::create("rsvd",);
+    r_axi_resp = uvm_reg_field::type_id::create("r_axi_resp");
+    w_axi_resp = uvm_reg_field::type_id::create("w_axi_resp");
+    
+    rsvd.configure      (this, 30, 2, "RO", 0, 1'b0, 1, 1, 0);
+    r_axi_resp.configure(this,  1, 1, "RO", 0, 1'b0, 1, 1, 0);
+    w_axi_resp.configure(this,  1, 0, "RO", 0, 1'b0, 1, 1, 0);
+  endfunction
+endclass
+
+Step B: Write a register block
+
+ Write a register block (derived from uvm_reg_block) that captures all the registers.
+
+class module_reg extends uvm_reg_block;
+  rand ral_control_reg  control_reg;
+  rand ral_intr_sts_reg intr_sts_reg;
+  rand ral_intr_msk_reg intr_msk_reg;
+  rand ral_debug_reg    debug_reg;
+  
+  `uvm_object_utils(module_reg)
+  function new(string name = "module_reg");
+    super.new(name);
+  endfunction
+  
+  virtual function void build();
+    control_reg = ral_control_reg::type_id::create("control_reg");
+    control_reg.configure(this, null);
+    control_reg.build();
+    
+    intr_sts_reg = ral_intr_sts_reg::type_id::create("intr_sts_reg");
+    intr_sts_reg.configure(this, null);
+    intr_sts_reg.build();
+    
+    intr_msk_reg = ral_intr_msk_reg::type_id::create("intr_msk_reg");
+    intr_msk_reg.configure(this, null);
+    intr_msk_reg.build();
+    
+    debug_reg = ral_debug_reg::type_id::create("debug_reg");
+    debug_reg.configure(this, null);
+    debug_reg.build();
+    
+    default_map = create_map("", `UVM_REG_ADDR_WIDTH'h0, 4, UVM_LITTLE_ENDIAN, 1);
+    
+    this.default_map.add_reg(control_reg,  `UVM_REG_ADDR_WIDTH'h0, "RW");
+    this.default_map.add_reg(intr_sts_reg, `UVM_REG_ADDR_WIDTH'h4, "RW");
+    this.default_map.add_reg(intr_msk_reg, `UVM_REG_ADDR_WIDTH'h8, "RW");
+    this.default_map.add_reg(debug_reg,    `UVM_REG_ADDR_WIDTH'hc, "RW");
+  endfunction
+endclass
+
+Step C: Write a top-level register block
+
+Write a top-level register block that captures multiple register blocks known as register models.
+
+class RegModel_SFR extends uvm_reg_block;
+  rand module_reg mod_reg;
+  
+  uvm_reg_map axi_map;
+  `uvm_object_utils(RegModel_SFR)
+  
+  function new(string name = "RegModel_SFR");
+    super.new(name, .has_coverage(UVM_NO_COVERAGE));
+  endfunction
+  
+  virtual function void build();
+    default_map = create_map("axi_map", 'h0, 4, UVM_LITTLE_ENDIAN, 0);
+   
+    mod_reg = module_reg::type_id::create("mod_reg");
+    mod_reg.configure(this);
+    mod_reg.build();
+    default_map.add_submap(this.mod_reg.default_map, 0);
+  endfunction
+endclass
+
+Note: In this example, we have only one block module_reg class. Hence, this step is optional and module_reg can be a top level register model.
+Step 2: Write an adapter class
+
+class reg_axi_adapter extends uvm_reg_adapter;
+  `uvm_object_utils(reg_axi_adapter)
+  
+  function new(string name = "reg_axi_adapter");
+    super.new(name);
+  endfunction
+  
+  virtual function uvm_sequence_item reg2bus (const ref uvm_reg_bus_op rw);
+    seq_item bus_item = seq_item::type_id::create("bus_item");
+    bus_item.addr = rw.addr;
+    bus_item.data = rw.data;
+    bus_item.rd_or_wr = (rw.kind == UVM_READ) ? 1: 0;
+    
+    `uvm_info(get_type_name, $sformatf("reg2bus: addr = %0h, data = %0h, rd_or_wr = %0h", bus_item.addr, bus_item.data, bus_item.rd_or_wr), UVM_LOW);
+    return bus_item;
+  endfunction
+  
+  virtual function void bus2reg (uvm_sequence_item bus_item, ref uvm_reg_bus_op rw);
+    seq_item bus_pkt;
+    if(!$cast(bus_pkt, bus_item))
+      `uvm_fatal(get_type_name(), "Failed to cast bus_item transaction")
+
+    rw.addr = bus_pkt.addr;
+    rw.data = bus_pkt.data;
+    rw.kind = (bus_pkt.rd_or_wr) ? UVM_READ: UVM_WRITE;
+  endfunction
+endclass
+
+Step 3: Integrate register model and adapter with the testbench
+
+class env extends uvm_env;
+  `uvm_component_utils(env)
+  agent agt;
+  reg_axi_adapter adapter;
+  RegModel_SFR reg_model;
+  function new(string name = "env", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
+  
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    agt = agent::type_id::create("agt", this);
+    adapter = reg_axi_adapter::type_id::create("adapter");
+    reg_model = RegModel_SFR::type_id::create("reg_model");
+    reg_model.build();
+    reg_model.reset();
+    reg_model.lock_model();
+    reg_model.print();
+    
+    uvm_config_db#(RegModel_SFR)::set(uvm_root::get(), "*", "reg_model", reg_model);
+  endfunction
+  
+  function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    reg_model.default_map.set_sequencer( .sequencer(agt.seqr), .adapter(adapter) );
+    reg_model.default_map.set_base_addr('h0);        
+    //regmodel.add_hdl_path("tb_top.DUT");
+  endfunction
+endclass
+
+Register Model hierarchy
+
+--------------------------------------------------------------------------------
+Name                 Type              Size  Value                             
+--------------------------------------------------------------------------------
+reg_model            RegModel_SFR      -     @2008                             
+ mod_reg            module_reg        -     @2030                             
+   control_reg      ral_control_reg   -     @2055                             
+     mod_en         uvm_reg_field     ...    RW control_reg[0:0]=1'h1         
+     dbg_en         uvm_reg_field     ...    RW control_reg[1:1]=1'h0         
+     parity_en      uvm_reg_field     ...    RW control_reg[2:2]=1'h1         
+     rsvd           uvm_reg_field     ...    RO control_reg[31:3]=29'h00000000
+   intr_sts_reg     ral_intr_sts_reg  -     @2092                             
+     w_axi_err      uvm_reg_field     ...    W1C intr_sts_reg[0:0]=1'h0       
+     r_axi_err      uvm_reg_field     ...    W1C intr_sts_reg[1:1]=1'h0       
+     rsvd           uvm_reg_field     ...    RO intr_sts_reg[31:2]=30'h00000000
+   intr_msk_reg     ral_intr_msk_reg  -     @2116                             
+     w_axi_err_msk  uvm_reg_field     ...    RW intr_msk_reg[0:0]=1'h1        
+     r_axi_err_msk  uvm_reg_field     ...    RW intr_msk_reg[1:1]=1'h0        
+     rsvd           uvm_reg_field     ...    RO intr_msk_reg[31:2]=30'h00000000
+   debug_reg        ral_debug_reg     -     @2140                             
+     w_axi_resp     uvm_reg_field     ...    RO debug_reg[0:0]=1'h0           
+     r_axi_resp     uvm_reg_field     ...    RO debug_reg[1:1]=1'h0           
+     rsvd           uvm_reg_field     ...    RO debug_reg[31:2]=30'h00000000  
+   uvm_reg_map      uvm_reg_map       -     @2164                             
+     endian                           ...   UVM_LITTLE_ENDIAN                 
+     control_reg    ral_control_reg   ...   @2055 +'h0                        
+     intr_sts_reg   ral_intr_sts_reg  ...   @2092 +'h4                        
+     intr_msk_reg   ral_intr_msk_reg  ...   @2116 +'h8                        
+     debug_reg      ral_debug_reg     ...   @2140 +'hc                        
+ axi_map            uvm_reg_map       -     @2021                             
+   endian                             ...   UVM_LITTLE_ENDIAN                 
+   uvm_reg_map      uvm_reg_map       -     @2164                             
+     endian                           ...   UVM_LITTLE_ENDIAN                 
+     control_reg    ral_control_reg   ...   @2055 +'h0                        
+     intr_sts_reg   ral_intr_sts_reg  ...   @2092 +'h4                        
+     intr_msk_reg   ral_intr_msk_reg  ...   @2116 +'h8                        
+     debug_reg      ral_debug_reg     ...   @2140 +'hc                        
+--------------------------------------------------------------------------------
+
+Step 4: Access registers using RAL methods
+
+reg_model.mod_reg.control_reg.write(status, 32'h1234_1234);
+reg_model.mod_reg.control_reg.read(status, read_data);
+    
+reg_model.mod_reg.intr_msk_reg.write(status, 32'h5555_5555);
+reg_model.mod_reg.intr_msk_reg.read(status, read_data);
+ 
+reg_model.mod_reg.debug_reg.write(status, 32'hAAAA_AAAA);
+reg_model.mod_reg.debug_reg.read(status, read_data);
+
+Execute Complete code
+
+Output:
+
+UVM_INFO base_seq.sv(27) @ 0: uvm_test_top.env_o.agt.seqr@@rseq [reg_seq] Reg seq: Inside Body
+UVM_INFO reg2axi_adapter.sv(14) @ 0: reporter [reg_axi_adapter] reg2bus: addr = 0, data = 12341234, rd_or_wr = 0
+UVM_INFO driver.sv(37) @ 6: uvm_test_top.env_o.agt.drv [driver] waddr = 0, wdata = 12341234
+UVM_INFO reg2axi_adapter.sv(14) @ 6: reporter [reg_axi_adapter] reg2bus: addr = 0, data = 0, rd_or_wr = 1
+UVM_INFO driver.sv(30) @ 14: uvm_test_top.env_o.agt.drv [driver] raddr = 0, rdata = 12341234
+UVM_INFO reg2axi_adapter.sv(14) @ 14: reporter [reg_axi_adapter] reg2bus: addr = 8, data = 55555555, rd_or_wr = 0
+UVM_INFO driver.sv(37) @ 22: uvm_test_top.env_o.agt.drv [driver] waddr = 8, wdata = 55555555
+UVM_INFO reg2axi_adapter.sv(14) @ 22: reporter [reg_axi_adapter] reg2bus: addr = 8, data = 0, rd_or_wr = 1
+UVM_INFO driver.sv(30) @ 30: uvm_test_top.env_o.agt.drv [driver] raddr = 8, rdata = 55555555
+UVM_INFO reg2axi_adapter.sv(14) @ 30: reporter [reg_axi_adapter] reg2bus: addr = c, data = aaaaaaaa, rd_or_wr = 0
+UVM_INFO driver.sv(37) @ 38: uvm_test_top.env_o.agt.drv [driver] waddr = c, wdata = aaaaaaaa
+UVM_INFO reg2axi_adapter.sv(14) @ 38: reporter [reg_axi_adapter] reg2bus: addr = c, data = 0, rd_or_wr = 1
+UVM_INFO driver.sv(30) @ 46: uvm_test_top.env_o.agt.drv [driver] raddr = c, rdata = aaaaaaaa
+UVM_INFO base_test.sv(19) @ 46: uvm_test_top [reg_test] End of testcase
+
+RAL Tutorials
+
+    RAL Model
+    RAL Model Structure
+    RAL Classes
+    RAL methods
+    RAL Adapter
+    RAL Predictor
+    Global declaration and built-in defines
+    RAL model Example
+
+
+
+UVM RAL as the name suggests, is a high-level object-oriented abstraction layer to access design registers. RAL model mimics the design registers and this entire model is fully configurable. Due to its abstraction behavior, RAL model can be easily migrated from block level to system level.
+
+What is Uvm_reg_block?Block abstraction base class. A block represents a design hierarchy. It can contain registers, register files, memories and sub-blocks. A block has one or more address maps, each corresponding to a physical interface on the block.
+
+What is Frontdoor access in UVM?Fontdoor access means using the standard access mechanism external to the DUT to read or write to a register. This usually involves sequences of time-consuming transactions on a bus interface.
+
+What is backdoor access in UVM? What are backdoor accesses ? UVM also allows backdoor accesses which uses a simulator database to directly access the signals within the DUT. Write operations deposit a value onto the signal and read operations sample the current value from the register signal.
+
+What is the difference between new () and create?create() is factory construction. You are delegating new() to the factory - the factory looks for overrides and replaces construction of your class with some other derived class.
+What are desired and mirrored values in RAL?By definition, desired value is function of testbench set value, mirrored value and access policy. For RW policy, desired value is same as testbench set value i.e. mirrored value is irrelevant whereas for RO policy desired value is same as mirrored value i.e. testbench set value is irrelevant.
+What is mirror value in UVM RAL? Mirrored Value
+
+ Every time a read or a write operation occurs on the design, the mirrored values for that particular register will be updated. Hence the mirrored value in the model is the latest known value in the design.
+Why do we need predictor in RAL?UVM RAL Predictor predicts the register access done through the register model and updates the RAL Model registers. UVM RAL provides the base class uvm_reg_predictor. uvm_reg_predictor updates the register model based on observed transactions published by a monitor.

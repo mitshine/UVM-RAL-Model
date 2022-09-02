@@ -1,0 +1,257 @@
+
+What is UVM RAL?
+July 22, 2020 Manish Singhal RAL	
+
+Today lets talk about UVM RAL. In this post, I will introduce about – What is RAL? and going forward I’ll post more about Why RAL is needed? and How to implement it?
+
+So what RAL stands for? RAL is an abbreviation for Register Abstraction Layer.
+
+In this post, we’ll discuss
+
+    Registers in SoC/Subsystem/Blocks
+    Basic representation of registers
+    Type of access needed to write/read registers
+    Where RAL fits in Layered structure?
+
+We know that our DUT (be it a SoC or Subsystem or Design Block) contains number of different type of registers e.g. control registers, status registers. Most likely these registers are contained within a dedicated block called CSR Block aka “Control and Status Register” Block. But name could be different in different SoCs. These registers are arranged inside the CSR block based on the address map in the SoC or Subsystem. Both hardware and software needs to access control registers to program and control different functionalities in the Chip/Subsystem/Block. Similarly, Status registers are read to know the status of an operation, for example, Interrupt assertion after completion of certain functionality, that means when a certain task is completed by the design, it sets a particular bit/s of the register field to indicate the completion of the operation. e.g. data transfer completion.
+
+To understand RAL, I would recommend you, first and foremost get familiarity with the Hardware Registers, if not having already, – I mean, How the registers are defined, what are different types, what are different fields and attributes?
+
+In short, I have explained here with an example of Control and Status register. As shown in the diagram below, there are two 32-bits registers – Control and Status registers.
+
+Control registers is having an offset of 0x00 and contains 5 different fields i.e. A, B, C, D & E of different sizes. Status register is with offset 0x04 & having 3 fields i.e. F, G & H. Control register is “WR” means Write and Read both in nature while Status register is “RO” which tells its Read Only. This gives us a fundamental structure of a register definition. Lets summarize it in form of technical jargon –
+
+Register names – Names of Control and Status register
+
+Register fields – A, B, C, D, E, F, G, H
+
+Register types – WR (Write and Read), RO (Read Only)
+
+I believe, it gave a fairly good picture how our registers looks like as part of our design. Next, we need to understand that these registers are being accessed by Hardware and Software both. There are two approaches to do that in Simulation world, those are called “Front Door Access” and “Back Door Access“.
+
+Lets talk about Front Door Access – It happens through an interface which could be anything like AHB or APB or I2C or UART or any other. Lets take example of APB (Most widely used for the peripherals register configuration in SoCs). Any peripheral (mostly acts like a Slave), which contains the registers, is connected to the APB bus and the Bus Master drives the WRITE and READ transactions on the APB bus towards the APB Slave to Write data and Read data to/from the registers. Fundamentally, we model these APB transactions in our UVM environment.
+
+Since our verification environment is UVM based, hence we write sequences to generate stimulus for register Write and Read transactions. RAL helps us to abstract the register layer and helps us to create a infrastructure which is independent of the the DUT interface. In a simplistic view, its like 2 layers along with the DUT.
+
+The following diagram will help you to visualize it –
+
+Here you can see that Block A is a RAL Layer (I know, RAL is in itself Register Abstraction Layer, but just from clarity point of view, using RAL Layer) which contains the Design registers model defined exactly equivalent to registers in the Design & it’s called the Register Model. Register Model contains the register name, its fields and attributes are declared here. Various different pre-defined register sequences comes with UVM base library, those can be directly re-used e.g. Reset sequence, walking 1’s. etc.
+
+Block B, is a protocol dependent implementation of the UVM environment e.g. UVM Driver, which converts the reusable sequence transactions into protocol dependent cycle based transaction and exchange it with the DUT.
+
+Block C, is our DUT which is connected to the Block B based on the chosen interface like APB.
+
+Hope this post gave a initial picture about RAL (Register Abstraction Layer). Going forward, in my upcoming post – I’m planning to write on “Why we need RAL Layer?” when we can write register sequences in our existing UVM environment. We’ll try to understand how RAL enhance the re-usability of register sequences.
+
+I believe, you enjoyed this post! If yes, keep posting your comments, so that I got to know your views. Till next post, Stay safe and healthy! Take care, see you again soon with a new post!
+
+
+
+Why UVM RAL is needed?
+October 2, 2020 Manish Singhal RAL	
+
+In my previous post, we learned about “What is UVM RAL?“. If you’ve not already gone through that post, I will encourage you to go through that post first. As a quick recap, in that post – we discussed about what are different types of registers inside the design, what makes up a design register, its different fields, and different properties of the those fields. We also discussed about different types of register accesses. Apart from all that, most important we learned that UVM RAL is a layer which is DUT abstraction level independent & not effected by the type of interface which is being used in the UVM environment. For more, please visit the post and read it.
+
+Let’s first understand the core purpose of UVM methodology – re-usability and configurability are two main aspects of UVM supporting both dynamic and static components. If you want to know more about what are dynamic and static components in UVM, you may refer my another post i.e. “UVM Environment Components“. RAL (Register Abstraction Layer) is another effort in the same direction.
+
+As per the topic of this post – lets understand Why UVM RAL is needed and how it helps to support the core purpose of UVM?
+
+To understand this, lets first see what it take to write a UVM register testcase? As we know, a UVM test starts a UVM sequence as part of it and this UVM sequence have to contains information about the register address which we wanted to access (WRITE or READ) and the corresponding data (in case of WRITE).
+
+In the above snippet of a UVM sequence, its defining the type of command, address and data to be driven by the UVM sequence using the tx sequence item. As we’re aware that DUT (design containing registers to verify) could be at block level, sub-system level or at SoC level so if the major motivation of UVM is to be applied, we should be able to re-use the stimulus at different abstraction levels. But as we know, address is going to be different at block level, sub-system level and SoC level. So the main question is –  How to re-use the stimulus (means testcases or UVM sequences) at different abstraction level because different addresses needs to be supplied at different abstraction levels?
+
+To solve this situation, Address map that is called “Register map” is an important element in this puzzle which helps to map a particular registers name i.e. R0 to the correct intended address required for a particular abstraction level and UVM sequence just uses the name of the register and desired operation i.e. WRITE or READ (as shown in the image below) with it.
+
+Figure below, shows the high level picture of the RAL implementation where Testcase/sequence just use the register name e.g. R0 to drive WRITE and/or READ transaction. Register name is mapped to the appropriate address in the register map and the register block containing the corresponding register map is connected to the UVM Agent which in turn is connected to a specific interface to access the desired register inside the DUT.
+
+                           (Figure: Simplified UVM RAL environment)
+
+So why do we need UVM RAL??
+
+Here are some key and important benefits –
+
+    Testcase/Sequences re-usability.
+    Register coverage
+    Pre-built Register sequences availability as part of UVM base classes
+    Back-door access of the DUT registers (Difficult in case of SystemVerilog package usage)
+    Provides a standardized approach for register verification
+
+We’re approaching towards now end of my this post on WHY do need UVM RAL? Hope you got fair idea about the benefits of using UVM RAL. In summary, though it appears that we may achieve the intended goals of our design registers verification without UVM RAL and UVM RAL is extra bit of work but for what?
+
+But the fact is if you see the above listed benefits and review in terms of register stimulus re-usability, register coverage, many powerful pre-built-in sequences, many additional functions like for backdoor access, quirky registers support etc. you will find its a big advantage to use UVM RAL. It is really helpful to move from block level to SoC level register verification in a systematic way and quicker than in non-UVM RAL approach.
+
+With that, I would like to conclude here this post, hope you like it and find it useful. If yes, please share me your comments below. Next, in my plan is to write posts on RAL implementation where showing what to do to create UVM RAL environment. Wish you to see again soon! 
+
+Take care and stay safe! Till next time, Bye! Keep Smiling 🙂
+
+
+
+How to implement UVM RAL? – Part 1
+November 2, 2020 Manish Singhal RALRAL	
+
+Hi Friends, in my previous posts on UVM RAL, we talked about “What is UVM RAL?” and “Why UVM RAL is needed?“. If you’ve not gone through those post, I’ll recommend you to visit those post if you are new to the UVM RAL domain.
+Introduction
+
+In this post, we will go through the process and procedure of creating Register Abstraction Model and integrating that generated register model with the UVM Testbench. We’ll understand to create the UVM base test, sequences with the register model. In the end, we’ll see how to create the register test as well?
+
+Before going into any other detail related to UVM RAL, one of the most important thing is to understand some fundamental items related to UVM Register Models as given below. Lets understand the purpose of these jargons being used repeatedly at different places in the UVM RAL domain. Once these jargons are clear, it will help us to understand the topics ahead in the post. So lets start with these –
+
+    Register fields
+        A collection of one or more consecutive bits holding some value.
+    Register
+        A register is a collection of one or more register fields. It represents a single register in the DUT.
+    Register file
+        A register file contains a collection of registers at different addresses. It represents a block of DUT registers.
+    Register block
+        It may contain registers, memories, register files, and other register blocks. Register block corresponds to a hierarchical level in the DUT.
+    Memory block
+        A memory contains a specified number of address locations. It represents a memory in the design.
+    Address map
+        The address map contains the register files and the memory blocks(if any) in the address space.
+    Register Model
+        The register model is composed of a hierarchy of register blocks that maps to the design hierarchy. It represents the root register block for all registers and memories in the DUT.
+    Register operation
+        Register operations are the generic transactions that execute read and write transactions to registers and memories.
+    Transaction adapter
+        It a UVM object placed in the Testbench to convert between generic register operation and the protocol-specific transactions used by the interface Agent.
+    Register sequence
+        A UVM sequence of read/write register operations that references the register model and is applied to registers and memories. These sequences are executed on the interface UVM sequencer.
+    Transaction Predictor
+        A UVM component i.e. uvm_reg_predictor which is placed in the testbench to receive bus transactions from the interface Agent’s monitor and play role in converting those transactions back to register operations. It also helps to either update the register model (for write operation) or compare and update the bus value to the register model expected value (on read operation).
+
+Okay, well, since now we’re familiar with basic terminology being used all across UVM RAL domain, lets see what is the simplified high level UVM RAL flow.
+High level UVM RAL flow –
+1. Register model creation
+2. Register model integration with-in the testbench
+3. Base test creation
+5. UVM sequence creation with register model
+6. Different register test creation
+
+Now, Lets start with each point and explain the process of each step.
+1. Register model creation
+
+This is the 1st step in the process of implementing UVM RAL. During this step, a model of the DUT registers is created which would be a replica of the DUT registers. Many of the defined terms above are being used to create a register model. Now a days many register model generators are available by different EDA vendors like Synopsys, Mentor and Cadence. Apart from that, there are other vendors as well those provides register model generator utilities. Let me also introduce here, an approach which is getting popular now a days to generate the register model i.e. using the IP-XACT description. IP-XACT is Accellera XML standard format for capturing and integrating design IP. IP-XACT is structural in nature and describes a desired register model by name, address space, register files, register blocks and fields. These XML files can be read by any free or commercial editors those provide table view and extra editing features. IP-XACT Accellera standard provides possibilities of vendor extensions so that vendor may add additional capabilities e.g. if any vendor wants they may add coverage directives or constraints (for register randomization) and variable e.g. hdl_path to directly access the register signals.
+
+Different vendors are having following utilities to generate register models to ease our work to write down register models manually which is very helpful to save time, efforts and to avoid coding errors.
+
+    Synopsys – ralgen
+    Mentor Graphics – register assistant
+    Cadence – irelGen
+    Agnisys – IDesignSpec
+
+For most of these tools, input required is in form of 4 formats i.e. Excel spreadsheet, IP-XACT XML file, SystemRDL & RALF format register specification. As output, these tools generate complete UVM class based register model.
+
+XML : eXtensible Markup language. It’s an extensible format for storing arbitrary information in ASCII text format. It is typically used behind the scenes by the tools and not meant for direct edit by the user.
+
+IP-XACT : Its an industry standard created by Accellera for storing information about IP and SoC. Information can be about Registers.
+
+SystemRDL : Its and industry standard created by Accellera for only register information about IP and SoC.
+
+RALF : This is a register modeling standard created by Synopsys. It has a TCL–based syntax.
+
+Synopsys based Register model generation flow is shown below –
+
+ 
+
+For Project purposes, most likely such utilities from any of the chosen vendor is used to save time and effort plus re-using the automated approach to generate the register model classes. But you must understand the skeleton and internal details of the generated register model which would be helpful to you to debug and make any modification (if required). Though it is suggested not to change things manually until highly desired because it may break up the consistency between what generator produced verses the changes made by you. In case, any update is to be made in the register model, its a good practice to update the inputs provided to the generators and re-run the tool to re-generate the updated model.
+
+Now lets, see what is contained with-in the register models? How the information is organized with-in it structurally?
+
+In the picture above, we can see different UVM classes being used to create a register model –
+
+    uvm_reg_field
+    uvm_reg
+    uvm_reg_map
+    uvm_mem
+    uvm_reg_block
+
+Lets see, some example code on how to use these UVM classes to build the register model –
+
+====================================
+class my_reg extends uvm_reg;
+  `uvm_object_utils(my_reg)
+
+   rand uvm_reg_field A;
+
+   function new (string name = "")
+      super.new(name, 8, UVM_NO_COVERAGE)
+   endfunction: new
+
+   virtual function void build();
+      A = uvm_reg_field::type_id::create("A");
+      A.configure(this, 8, 0, "RW", 1, 8'h00, 1, 1, 1);
+   endfunction: build
+endclass: my_reg
+====================================
+
+Notice the build() method, its different than build_phase() method which is used for uvm_component class.
+
+Using this code, we declared a register named “my_reg” using the uvm_reg base class and registered it with factory.
+
+There is a field in the register declared as “A” and “my_reg” class builds the declared fields and configure those as well (as shown in the code above).
+
+The configure function is having following arguments –
+
+configure(this, size, lsb, access, volatile, reset value, has reset, rand, accessible)
+
+Now, lets see – how this coded “my_reg” register can be used to declare a register block –
+
+=====================================
+class my_reg_block extends uvm_reg_block;
+   `uvm_object_utils(my_reg_block)
+
+    rand my_reg reg1;
+    uvm_reg_map rmap;
+    
+    function new (string name = "");
+      super.new(this, UVM_NO_COVERAGE);
+    endfunction: new
+
+    virtual function void build();
+      reg1 = my_reg::type_id::create("reg1");
+      reg1.configure(this);
+      reg1.build();
+      rmap = create_map("rmap", 'h00, 1, UVM_BIG_ENDIAN); // (baseaddress, bytewidth, endianess)
+      default_map = rmap;
+      rmap.add_reg(reg1, 'h4, "RW"); // (offset, access rights)
+      lock_model();
+    endfunction: build
+endclass: my_reg_block
+======================================    
+
+Here in the code above, we can see the usage of adding “my_reg” register into the register block called “my_reg_block”. Important aspect is to see how an address map is created with defining base address of the register block, byte width and endianness. Also notice, how the “my_reg” register is added to the address map by defining offset and access rights.
+
+Great! we now covered what is required in elementary form to create a register model. But imagine If there is a hierarchy of register blocks at different offsets, we may have number of “my_reg_block” gets instantiated into another block e.g. “my_top_reg_block”. In that case, lets see what  the code would look like –
+
+======================================
+class my_top_reg_block extends uvm_reg_block;
+    `uvm_object_utils(my_top_reg_block)
+
+    my_reg_block R1;
+    my_reg_block R2;
+
+    uvm_reg_map top_map;
+
+    function new (string name = "");
+      super.new(name, UVM_NO_COVERAGE);
+    endfunction: new
+
+    virtual function void build();
+      R1 = my_reg_block::type_id::create("R1");
+      R2 = my_reg_block::type_id::create("R2");
+      top_map = create_map("top_map", 'h00, 1, UVM_LITTLE_ENDIAN);
+      default_map = top_map;
+      top_map.add_submap(R1.rmap, 'h00);
+      top_map.add_submap(R2.rmap, 'h10);
+      lock_model();
+    endfunction: build
+=========================================
+
+As per the above code, we’ve 2 sub reg blocks at different offsets i.e. ‘h00 and ‘h10. We defined a top level register block containing two register blocks with a top address map and added two sub maps at the desired offsets.
+
+This concludes the post here, with explaining the UVM RAL flow and first step in the UVM RAL flow i.e. Register model creation. Here I tried to cover necessary aspects of register model creation using two approaches i.e. RAL generator and writing register model code manually. In real project situations – there might be thousands of registers distributed in multiple hierarchies with lots many different access rights, reset conditions etc but principles will remain same.
+
+I hope and believe, this post provided you with required details of the UVM RAL based register creation.  In my upcoming post, we’ll cover with other steps in the UVM RAL flow. Till then, take care and stay safe! See you again..soon. If you find it interesting and helpful, please feel free to keep sharing your observations/thoughts in form of comments below.
+
+
+

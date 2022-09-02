@@ -1,0 +1,498 @@
+
+UVM Tutorial for Candy Lovers – 9. Register Abstraction-爱代码爱编程
+category: SystemVerilocategory: verilog-2001 Posted on2020-12-01
+
+This post will explain how to use the UVM Register Abstraction Layer (RAL) to generate register transactions. The figure below shows the verification platform used for this post. Among other things, the jelly_bean_reg_block, the jelly_bean_reg_adapter, and the jelly_bean_reg_predictor are the classes used for the register abstraction.
+在这里插入图片描述
+The figure below shows the diagram of the RAL-related classes. The standard UVM classes are shown in pink, while the jelly-bean classes are shown in light blue. The diagram looks busy, but bear in mind that I will explain each jelly-bean class one by one.
+
+在这里插入图片描述Register Definitions
+
+In the previous posts, the DUT had no accessible registers. We are going to add the registers that hold jelly-bean recipe information and its taste. We will also add a command input port to the DUT so that we can write a jelly-bean recipe to the register and read its taste. The figure below shows the register definition of the DUT.
+
+在这里插入图片描述
+The source code of the DUT (jelly_bean_taster) is shown below. When the command input is WRITE, the values of flavor, color, sugar_free, and sour input ports are written to the RECIPE register (line 22 to 25). When the command input is READ, the TASTE register is read out and the taste output is driven accordingly (line 27).
+
+module jelly_bean_taster( jelly_bean_if.slave_mp jb_slave_if );
+   import jelly_bean_pkg::*;
+ 
+   reg [2:0] flavor;
+   reg [1:0] color;
+   reg       sugar_free;
+   reg       sour;
+   reg [1:0] command;
+   reg [1:0] taste;
+ 
+   initial begin
+      flavor     = 0;
+      color      = 0;
+      sugar_free = 0;
+      sour       = 0;
+      command    = 0;
+      taste      = 0;
+   end
+ 
+   always @ ( posedge jb_slave_if.clk ) begin
+      if ( jb_slave_if.command == jelly_bean_types::WRITE ) begin
+         flavor     < = jb_slave_if.flavor;         
+         color      <= jb_slave_if.color;         
+         sugar_free <= jb_slave_if.sugar_free;         
+         sour       <= jb_slave_if.sour;      
+      end 
+      else if ( jb_slave_if.command == jelly_bean_types::READ ) begin
+         jb_slave_if.taste <= taste;      end
+   end
+ 
+   always @ ( posedge jb_slave_if.clk ) begin
+      if ( jb_slave_if.flavor == jelly_bean_types::CHOCOLATE &&
+           jb_slave_if.sour ) begin
+         taste <= jelly_bean_types::YUCKY;
+      end else if ( jb_slave_if.flavor != jelly_bean_types::NO_FLAVOR ) begin
+         taste <= jelly_bean_types::YUMMY;
+      end
+   end
+endmodule: jelly_bean_taster
+
+Register Model
+
+The model of the RECIPE register is defined by extending the uvm_reg class. Each field of the register is defined as a uvm_reg_field (line 4 to 7). The fields are configured in the build function. Note that the name, build, is used for convenience. Do not confuse it with the build_phase of the uvm_component because the uvm_reg is not a uvm_component.
+
+class jelly_bean_recipe_reg extends uvm_reg;
+   `uvm_object_utils( jelly_bean_recipe_reg )
+ 
+   rand uvm_reg_field flavor;   
+   rand uvm_reg_field color;   
+   rand uvm_reg_field sugar_free;   
+   rand uvm_reg_field sour; 
+   constraint flavor_color_con {
+      flavor.value != jelly_bean_types::NO_FLAVOR;
+      flavor.value == jelly_bean_types::APPLE
+                   -> color.value != jelly_bean_types::BLUE;
+      flavor.value == jelly_bean_types::BLUEBERRY
+                   -> color.value == jelly_bean_types::BLUE;
+      flavor.value < = jelly_bean_types::CHOCOLATE;
+   }
+ 
+   function new( string name = "jelly_bean_recipe_reg" );
+      super.new( .name( name ), .n_bits( 7 ), .has_coverage( UVM_NO_COVERAGE ) );
+   endfunction: new
+ 
+   virtual function void build();
+      flavor = uvm_reg_field::type_id::create( "flavor" );
+      flavor.configure( .parent                 ( this ),
+                        .size                   ( 3    ),
+                        .lsb_pos                ( 0    ),
+                        .access                 ( "WO" ),
+                        .volatile               ( 0    ),
+                        .reset                  ( 0    ),
+                        .has_reset              ( 1    ),
+                        .is_rand                ( 1    ),
+                        .individually_accessible( 0    ) );
+ 
+      color = uvm_reg_field::type_id::create( "color" );
+      color.configure( .parent                 ( this ),
+                       .size                   ( 2    ),
+                       .lsb_pos                ( 3    ),
+                       .access                 ( "WO" ),
+                       .volatile               ( 0    ),
+                       .reset                  ( 0    ),
+                       .has_reset              ( 1    ),
+                       .is_rand                ( 1    ),
+                       .individually_accessible( 0    ) );
+ 
+      sugar_free = uvm_reg_field::type_id::create( "sugar_free" );
+      sugar_free.configure( .parent                 ( this ),
+                            .size                   ( 1    ),
+                            .lsb_pos                ( 5    ),
+                            .access                 ( "WO" ),
+                            .volatile               ( 0    ),
+                            .reset                  ( 0    ),
+                            .has_reset              ( 1    ),
+                            .is_rand                ( 1    ),
+                            .individually_accessible( 0    ) );
+ 
+      sour = uvm_reg_field::type_id::create( "sour" );
+      sour.configure( .parent                 ( this ),
+                      .size                   ( 1    ),
+                      .lsb_pos                ( 6    ),
+                      .access                 ( "WO" ),
+                      .volatile               ( 0    ),
+                      .reset                  ( 0    ),
+                      .has_reset              ( 1    ),
+                      .is_rand                ( 1    ),
+                      .individually_accessible( 0    ) );
+   endfunction: build
+endclass: jelly_bean_recipe_reg
+
+The model of the TASTE register is similarly defined.
+
+class jelly_bean_taste_reg extends uvm_reg;
+   `uvm_object_utils( jelly_bean_taste_reg )
+ 
+   rand uvm_reg_field taste; 
+   function new( string name = "jelly_bean_taste_reg" );
+      super.new( .name( name ), .n_bits( 2 ), .has_coverage( UVM_NO_COVERAGE ) );
+   endfunction: new
+ 
+   virtual function void build();
+      taste = uvm_reg_field::type_id::create("taste");
+      taste.configure( .parent                 ( this ),
+                       .size                   ( 2    ),
+                       .lsb_pos                ( 0    ),
+                       .access                 ( "RO" ),
+                       .volatile               ( 1    ),
+                       .reset                  ( 0    ),
+                       .has_reset              ( 1    ),
+                       .is_rand                ( 1    ),
+                       .individually_accessible( 1    ) );
+   endfunction: build
+endclass: jelly_bean_taste_reg
+
+Register Block
+
+The jelly_bean_reg_block contains the two registers created above and defines a register map.
+
+class jelly_bean_reg_block extends uvm_reg_block;
+   `uvm_object_utils( jelly_bean_reg_block )
+ 
+   rand jelly_bean_recipe_reg jb_recipe_reg;
+   rand jelly_bean_taste_reg  jb_taste_reg;
+   uvm_reg_map                reg_map;
+ 
+   function new( string name = "jelly_bean_reg_block" );
+      super.new( .name( name ), .has_coverage( UVM_NO_COVERAGE ) );
+   endfunction: new
+ 
+   virtual function void build();
+      jb_recipe_reg = jelly_bean_recipe_reg::type_id::create( "jb_recipe_reg" );      jb_recipe_reg.configure( .blk_parent( this ) );      jb_recipe_reg.build(); 
+      jb_taste_reg = jelly_bean_taste_reg::type_id::create( "jb_taste_reg" );      jb_taste_reg.configure( .blk_parent( this ) );      jb_taste_reg.build(); 
+      reg_map = create_map( .name( "reg_map" ), .base_addr( 8'h00 ),                            .n_bytes( 1 ), .endian( UVM_LITTLE_ENDIAN ) );      reg_map.add_reg( .rg( jb_recipe_reg ), .offset( 8'h00 ), .rights( "WO" ) );      reg_map.add_reg( .rg( jb_taste_reg  ), .offset( 8'h01 ), .rights( "RO" ) );      lock_model(); // finalize the address mapping
+   endfunction: build
+ 
+endclass: jelly_bean_reg_block
+
+Register Adapter
+
+The jelly_bean_reg_adapter class provides two functions to convert between a uvm_reg_bus_op and a jelly_bean_transaction. The reg2bus function converts a uvm_reg_bus_op into a jelly_bean_transaction, whereas the bus2reg function converts a jelly_bean_transaction back to a uvm_reg_bus_op.
+
+The uvm_reg_adapter is a uvm_object, not a uvm_component.
+
+Advanced Topic： Even though a uvm_sequence is a uvm_sequence_item, you cannot let the reg2bus() function create a uvm_sequence and return it. This is because when a register is read/written, the uvm_reg_map calls uvm_sequence_base::start_item() passing the object returned by the reg2bus(), but the start_item() does not expect a uvm_sequence. This will cause a fatal error. For more details, please see Register Access Methods.
+
+class jelly_bean_reg_adapter extends uvm_reg_adapter;
+   `uvm_object_utils( jelly_bean_reg_adapter )
+ 
+   function new( string name = "" );
+      super.new( name );
+      supports_byte_enable = 0;
+      provides_responses   = 0;
+   endfunction: new
+ 
+   virtual function uvm_sequence_item reg2bus( const ref uvm_reg_bus_op rw );
+      jelly_bean_transaction jb_tx
+        = jelly_bean_transaction::type_id::create("jb_tx"); 
+      if ( rw.kind == UVM_READ )       jb_tx.command = jelly_bean_types::READ;      
+      else if ( rw.kind == UVM_WRITE ) jb_tx.command = jelly_bean_types::WRITE;      
+      else                             jb_tx.command = jelly_bean_types::NO_OP;      
+      if ( rw.kind == UVM_WRITE )        { jb_tx.sour, jb_tx.sugar_free, jb_tx.color, jb_tx.flavor } = rw.data;     
+       return jb_tx;   
+       endfunction: reg2bus
+ 
+   virtual function void bus2reg( uvm_sequence_item bus_item,
+                                  ref uvm_reg_bus_op rw );
+      jelly_bean_transaction jb_tx;
+ 
+      if ( ! $cast( jb_tx, bus_item ) ) begin
+         `uvm_fatal( get_name(),
+                     "bus_item is not of the jelly_bean_transaction type." )
+         return;
+      end
+ 
+      rw.kind = ( jb_tx.command == jelly_bean_types::READ ) ? UVM_READ : UVM_WRITE;      
+      if ( jb_tx.command == jelly_bean_types::READ )        rw.data = jb_tx.taste;      
+      else if ( jb_tx.command == jelly_bean_types::WRITE )        rw.data = { jb_tx.sour, jb_tx.sugar_free, jb_tx.color, jb_tx.flavor };      	  rw.status = UVM_IS_OK;   
+      endfunction: bus2reg
+ 
+endclass: jelly_bean_reg_adapter
+
+Register Predictor
+
+The register predictor updates the values of the register model based on observed bus transactions. As the jelly-bean register predictor is not involved with any kind of extended features, the uvm_reg_predictor is used as is.
+
+typedef uvm_reg_predictor#( jelly_bean_transaction ) jelly_bean_reg_predictor;
+
+Agent
+
+The jelly_bean_agent instantiates the jelly_bean_reg_adapter (line 35).
+
+class jelly_bean_agent extends uvm_agent;
+   `uvm_component_utils( jelly_bean_agent )
+ 
+   uvm_analysis_port#( jelly_bean_transaction ) jb_ap;
+ 
+   jelly_bean_agent_config jb_agent_cfg;
+   jelly_bean_sequencer    jb_seqr;
+   jelly_bean_driver       jb_drvr;
+   jelly_bean_monitor      jb_mon;
+   jelly_bean_reg_adapter  jb_reg_adapter;
+ 
+   function new( string name, uvm_component parent );
+      super.new( name, parent );
+   endfunction: new
+ 
+   function void build_phase( uvm_phase phase );
+      super.build_phase( phase );
+ 
+      if ( ! uvm_config_db#( jelly_bean_agent_config )::get( .cntxt( this ),
+                                                             .inst_name ( "" ),
+                                                             .field_name( "jb_agent_cfg" ),
+                                                             .value( jb_agent_cfg ))) begin
+         `uvm_error( "jelly_bean_agent", "jb_agent_cfg not found" )
+      end
+ 
+      jb_ap = new( .name( "jb_ap" ), .parent( this ) );
+      if ( jb_agent_cfg.active == UVM_ACTIVE ) begin
+         jb_seqr = jelly_bean_sequencer::type_id::create( .name( "jb_seqr" ),
+                                                          .parent( this ) );
+         jb_drvr = jelly_bean_driver::type_id::create( .name( "jb_drvr" ),
+                                                       .parent( this ) );
+      end
+      jb_mon = jelly_bean_monitor::type_id::create( .name( "jb_mon" ),
+                                                    .parent( this ) );
+      jb_reg_adapter = jelly_bean_reg_adapter::type_id::create( .name( "jb_reg_adapter" ) );   
+      endfunction: build_phase
+ 
+   function void connect_phase( uvm_phase phase );
+      super.connect_phase( phase );
+ 
+      jb_mon.jb_if = jb_agent_cfg.jb_if;
+      if ( jb_agent_cfg.active == UVM_ACTIVE ) begin
+         jb_drvr.seq_item_port.connect( jb_seqr.seq_item_export );
+         jb_drvr.jb_if = jb_agent_cfg.jb_if;
+      end
+      jb_mon.jb_ap.connect( jb_ap );
+   endfunction: connect_phase
+endclass: jelly_bean_agent
+
+Environment Configuration
+
+The jelly_bean_env_config has a handle to the jelly_bean_reg_block so that the jelly_bean_env can access the register model.
+
+class jelly_bean_env_config extends uvm_object;
+   `uvm_object_utils( jelly_bean_env_config )
+ 
+   bit has_jb_agent = 1;
+   bit has_jb_sb    = 1;
+ 
+   jelly_bean_agent_config jb_agent_cfg;
+   jelly_bean_reg_block    jb_reg_block; 
+   function new( string name = "" );
+      super.new( name );
+   endfunction: new
+endclass: jelly_bean_env_config
+
+Environment
+
+The jelly_bean_env instantiates the jelly_bean_agent and the jelly_bean_reg_predictor (line 28 to 31), then connects register-related objects:
+
+Firstly, in the connect_phase(), the set_sequencer() function associates the jelly-bean sequencer and the register adapter with the register map (line 45 and 46). The set_sequencer() must be called before starting the sequence based on a uvm_reg_sequence. A register block may have more than one register map.
+
+Secondly, the register map and the register adapter are associated with the register predictor (line 49 and 50). The register predictor will use the register map and the register adapter to convert a jelly_bean_transaction back to a register operation.
+
+Lastly, the register predictor is connected to the agent to subscribe the jelly_bean_transactions from the agent (line 51).
+
+class jelly_bean_env extends uvm_env;
+   `uvm_component_utils( jelly_bean_env )
+ 
+   jelly_bean_env_config    jb_env_cfg;
+   jelly_bean_agent         jb_agent;
+   jelly_bean_fc_subscriber jb_fc_sub;
+   jelly_bean_scoreboard    jb_sb;
+   jelly_bean_reg_predictor jb_reg_predictor;
+ 
+   function new( string name, uvm_component parent );
+      super.new( name, parent );
+   endfunction: new
+ 
+   function void build_phase( uvm_phase phase );
+      super.build_phase( phase );
+      if ( ! uvm_config_db#( jelly_bean_env_config )::get
+           ( .cntxt( this ),
+             .inst_name( "" ),
+             .field_name( "jb_env_cfg" ),
+             .value( jb_env_cfg ) ) ) begin
+         `uvm_fatal( get_name(), "jb_env_cfg not found" )
+      end
+ 
+      uvm_config_db#( jelly_bean_agent_config )::set( .cntxt( this ),
+                                                      .inst_name( "jb_agent*" ),
+                                                      .field_name( "jb_agent_cfg" ),
+                                                      .value( jb_env_cfg.jb_agent_cfg ) );
+      jb_agent = jelly_bean_agent::type_id::create( .name( "jb_agent" ),                                                    .parent( this ) );      jb_reg_predictor = jelly_bean_reg_predictor::type_id::create( .name( "jb_reg_predictor" ),                                                                    .parent( this ) );      if ( jb_env_cfg.has_jb_sb ) begin
+         jb_sb = jelly_bean_scoreboard::type_id::create( .name( "jb_sb" ),
+                                                         .parent( this ) );
+      end
+      jb_fc_sub = jelly_bean_fc_subscriber::type_id::create( .name( "jb_fc_sub" ),
+                                                             .parent( this ) );
+    endfunction: build_phase
+ 
+   function void connect_phase( uvm_phase phase );
+      super.connect_phase( phase );
+      jb_agent.jb_ap.connect( jb_fc_sub.analysis_export );
+      jb_agent.jb_ap.connect( jb_sb.jb_analysis_export );
+      if ( jb_env_cfg.jb_reg_block.get_parent() == null ) begin // if the top-level env
+         jb_env_cfg.jb_reg_block.reg_map.set_sequencer( .sequencer( jb_agent.jb_seqr ),                                                        .adapter( jb_agent.jb_reg_adapter ) );      end
+      jb_env_cfg.jb_reg_block.reg_map.set_auto_predict( .on( 0 ) );
+      jb_reg_predictor.map     = jb_env_cfg.jb_reg_block.reg_map;      jb_reg_predictor.adapter = jb_agent.jb_reg_adapter;      jb_agent.jb_ap.connect( jb_reg_predictor.bus_in );   endfunction: connect_phase
+ 
+endclass: jelly_bean_env
+
+Base Test
+
+The base test instantiates a jelly_bean_reg_block (line 16 and 17) and stores its handle in the jelly_bean_env_config (line 19 and 20).
+
+class jelly_bean_base_test extends uvm_test;
+   `uvm_component_utils( jelly_bean_base_test )
+ 
+   jelly_bean_env          jb_env;
+   jelly_bean_env_config   jb_env_cfg;
+   jelly_bean_agent_config jb_agent_cfg;
+   jelly_bean_reg_block    jb_reg_block;
+ 
+   function new( string name, uvm_component parent );
+      super.new( name, parent );
+   endfunction: new
+ 
+   function void build_phase(uvm_phase phase);
+      super.build_phase(phase);
+ 
+      jb_reg_block = jelly_bean_reg_block::type_id::create( "jb_reg_block" );      jb_reg_block.build(); 
+      jb_env_cfg = jelly_bean_env_config::type_id::create( "jb_env_cfg" );      jb_env_cfg.jb_reg_block = jb_reg_block; 
+      jb_agent_cfg = jelly_bean_agent_config::type_id::create( "jb_agent_cfg" );
+ 
+      if ( ! uvm_config_db#( virtual jelly_bean_if )::get( .cntxt( this ),
+                                                           .inst_name( "" ),
+                                                           .field_name( "jb_if" ),
+                                                           .value( jb_agent_cfg.jb_if ))) begin
+         `uvm_error( "jelly_bean_test", "jb_if not found" )
+      end
+ 
+      jb_env_cfg.jb_agent_cfg = jb_agent_cfg;
+ 
+      uvm_config_db#(jelly_bean_env_config)::set( .cntxt( null ),
+                                                  .inst_name( "*" ),
+                                                  .field_name( "jb_env_cfg" ),
+                                                  .value( jb_env_cfg ) );
+      jb_env = jelly_bean_env::type_id::create( .name( "jb_env" ),
+                                                .parent( this ) );
+   endfunction: build_phase
+ 
+   virtual function void start_of_simulation_phase( uvm_phase phase );
+      super.start_of_simulation_phase( phase );
+      uvm_top.print_topology();
+   endfunction: start_of_simulation_phase
+ 
+endclass: jelly_bean_base_test
+
+Sequence without Register Abstraction
+
+We have created all the components by now and we are ready to create a register sequence. But before doing that, let’s create a “regular” sequence without using the register abstraction for comparison. The jelly_bean_sequence is a sequence to generate a sour-green-apple jelly bean. The body of the sequence creates a jelly_bean_transaction, which will be used by the driver to do pin wiggling.
+
+class jelly_bean_sequence extends uvm_sequence#( jelly_bean_transaction );
+   `uvm_object_utils( jelly_bean_sequence )
+ 
+   function new( string name = "" );
+      super.new( name );
+   endfunction: new
+ 
+   task body();
+      jelly_bean_transaction jb_tx;
+      jb_tx = jelly_bean_transaction::type_id::create( .name( "jb_tx" ),
+                                                       .contxt( get_full_name()));
+      start_item( jb_tx );
+      jb_tx.flavor     = jelly_bean_types::APPLE;      jb_tx.color      = jelly_bean_types::GREEN;      jb_tx.sugar_free = 0;      jb_tx.sour       = 1;      finish_item(jb_tx);
+   endtask: body
+endclass: jelly_bean_sequence
+
+Sequence Using Register Abstraction
+
+The jelly_bean_reg_sequence is another sequence to generate a sour-green-apple jelly bean, but using the register abstraction. This sequence is extended from the uvm_reg_sequence class so that we can use the convenience functions such as write_reg() and read_reg(). The body of the sequence writes a recipe (line 23) to the RECIPE register, then reads back its taste from the TASTE register (line 24). Note that we do not create a jelly_bean_transaction in the sequence. The register adapter will convert the register operations into the corresponding jelly_bean_transactions.
+
+class jelly_bean_reg_sequence extends uvm_reg_sequence;
+   `uvm_object_utils( jelly_bean_reg_sequence )
+ 
+   function new( string name = "" );
+      super.new( name );
+   endfunction: new
+ 
+   virtual task body();
+      jelly_bean_reg_block       jb_reg_block;
+      jelly_bean_types::flavor_e flavor;
+      jelly_bean_types::color_e  color;
+      bit                        sugar_free;
+      bit                        sour;
+      uvm_status_e               status;
+      uvm_reg_data_t             value;
+ 
+      $cast( jb_reg_block, model );
+      flavor     = jelly_bean_types::APPLE;
+      color      = jelly_bean_types::GREEN;
+      sugar_free = 0;
+      sour       = 1;
+ 
+      write_reg( jb_reg_block.jb_recipe_reg, status, { sour, sugar_free, color, flavor } );      read_reg ( jb_reg_block.jb_taste_reg,  status, value );   endtask: body
+ 
+endclass: jelly_bean_reg_sequence
+
+Register Test
+
+The jelly_bean_reg_test creates a jelly_bean_reg_sequence we have just created and starts the sequence (line 12 to 15).
+
+class jelly_bean_reg_test extends jelly_bean_base_test;
+   `uvm_component_utils( jelly_bean_reg_test )
+ 
+   function new( string name, uvm_component parent );
+      super.new( name, parent );
+   endfunction: new
+ 
+   task main_phase( uvm_phase phase );
+      jelly_bean_reg_sequence jb_reg_seq;
+ 
+      phase.raise_objection( .obj( this ) );
+      jb_reg_seq = jelly_bean_reg_sequence::type_id::create( .name( "jb_reg_seq" ),                                                             .contxt( get_full_name()));      jb_reg_seq.model = jb_reg_block;      jb_reg_seq.start( .sequencer( jb_env.jb_agent.jb_seqr ) ); 
+      #100ns;
+      phase.drop_objection( .obj( this ) );
+ 
+   endtask: main_phase
+endclass: jelly_bean_reg_test
+
+Simulation
+
+Let’s look at a simulation result. The simulation successfully generated a sour-green apple and read back its taste from the DUT.
+
+UVM_INFO jb3.sv(727) @ 30: uvm_test_top.jb_env.jb_sb [jelly_bean_scoreboard] You have a good sense of taste.
+---------------------------------------------------------
+Name          Type                         Size  Value
+---------------------------------------------------------
+jb_tx         jelly_bean_transaction       -     @7929
+flavor      jelly_bean_types::flavor_e   3     APPLE
+color       jelly_bean_types::color_e    2     GREEN  
+sugar_free  integral                     1     'h0  
+sour        integral                     1     'h1  
+command     jelly_bean_types::command_e  2     WRITE  
+taste       jelly_bean_types::taste_e    2     NO_TASTE
+---------------------------------------------------------
+ 
+UVM_INFO jb3.sv(727) @ 60: uvm_test_top.jb_env.jb_sb [jelly_bean_scoreboard] You have a good sense of taste.
+----------------------------------------------------------
+Name          Type                         Size  Value
+----------------------------------------------------------
+jb_tx         jelly_bean_transaction       -     @7928
+flavor      jelly_bean_types::flavor_e   3     NO_FLAVOR
+color       jelly_bean_types::color_e    2     NO_COLOR
+sugar_free  integral                     1     'h0
+sour        integral                     1     'h0
+command     jelly_bean_types::command_e  2     READ  
+taste       jelly_bean_types::taste_e    2     YUMMY
+----------------------------------------------------------
+
